@@ -59,6 +59,7 @@ func fetchSource(ctx context.Context, host hostClient, cfg pluginConfig, source 
 			headers["Content-Type"] = []string{"application/json"}
 		}
 	}
+	request.HostCallbackID = hostCallbackID(ctx)
 	requestCtx, cancel := context.WithTimeout(ctx, cfg.RequestTimeout)
 	defer cancel()
 	resp, err := host.doHTTP(requestCtx, request)

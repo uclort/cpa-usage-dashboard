@@ -63,7 +63,8 @@ type hostAuthListResponse struct {
 }
 
 type hostAuthGetRequest struct {
-	AuthIndex string `json:"auth_index"`
+	AuthIndex      string `json:"auth_index"`
+	HostCallbackID string `json:"host_callback_id,omitempty"`
 }
 
 type hostAuthGetResponse struct {
@@ -78,10 +79,11 @@ type hostAuthGetRuntimeResponse struct {
 }
 
 type hostHTTPRequest struct {
-	Method  string              `json:"method"`
-	URL     string              `json:"url"`
-	Headers map[string][]string `json:"headers,omitempty"`
-	Body    []byte              `json:"body,omitempty"`
+	Method         string              `json:"method"`
+	URL            string              `json:"url"`
+	Headers        map[string][]string `json:"headers,omitempty"`
+	Body           []byte              `json:"body,omitempty"`
+	HostCallbackID string              `json:"host_callback_id,omitempty"`
 }
 
 type hostHTTPResponse struct {

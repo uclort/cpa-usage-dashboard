@@ -165,6 +165,7 @@ func fetchOAuthUsage(ctx context.Context, host hostClient, cfg pluginConfig, ent
 }
 
 func doRequest(ctx context.Context, host hostClient, cfg pluginConfig, request hostHTTPRequest) (hostHTTPResponse, error) {
+	request.HostCallbackID = hostCallbackID(ctx)
 	requestCtx, cancel := context.WithTimeout(ctx, cfg.RequestTimeout)
 	defer cancel()
 	resp, err := host.doHTTP(requestCtx, request)
@@ -265,4 +266,11 @@ func firstValueAny(values ...any) any {
 		}
 	}
 	return nil
+}
+
+func hostCallbackID(ctx context.Context) string {
+	if value, ok := ctx.Value(bodyKey{}).(string); ok {
+		return value
+	}
+	return ""
 }

@@ -82,8 +82,8 @@ func (cgoHostClient) listAuth(_ context.Context) ([]hostAuthFileEntry, error) {
 	return response.Files, nil
 }
 
-func (cgoHostClient) getAuth(_ context.Context, authIndex string) (json.RawMessage, error) {
-	result, err := callHost(methodHostAuthGet, hostAuthGetRequest{AuthIndex: authIndex})
+func (cgoHostClient) getAuth(ctx context.Context, authIndex string) (json.RawMessage, error) {
+	result, err := callHost(methodHostAuthGet, hostAuthGetRequest{AuthIndex: authIndex, HostCallbackID: hostCallbackID(ctx)})
 	if err != nil {
 		return nil, err
 	}
