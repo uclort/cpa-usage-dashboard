@@ -79,7 +79,7 @@ func (r managementRequest) BodyContext() context.Context {
 
 func (r *runtimeState) getOverview(ctx context.Context, force bool) (overviewResponse, bool, error) {
 	r.mu.Lock()
-	defer func() { r.cond.Broadcast() }()
+	defer r.mu.Unlock()
 	for {
 		if r.closed {
 			return overviewResponse{}, false, context.Canceled
@@ -94,11 +94,14 @@ func (r *runtimeState) getOverview(ctx context.Context, force bool) (overviewRes
 			snapshot := r.refresh(ctx, cfg)
 			r.mu.Lock()
 			r.refreshing = false
+			r.cond.Broadcast()
+			if ctx.Err() != nil {
+				return overviewResponse{}, false, ctx.Err()
+			}
 			if snapshot.Summary.Errors == 0 {
 				r.snapshot = snapshot
 				r.hasSnap = true
 			}
-			r.cond.Broadcast()
 			return snapshot, false, nil
 		}
 		r.cond.Wait()
