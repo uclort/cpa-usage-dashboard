@@ -30,7 +30,7 @@ func TestAntigravityPools(t *testing.T) {
 		"chat-other":    {"quotaInfo": map[string]any{"remainingFraction": .1, "resetTime": "2026-01-01T00:00:00Z"}},
 	}
 	items := antigravityPools(payload)
-	if len(items) != 1 || items[0].Name != "Claude 5h" {
+	if len(items) != 1 || items[0].Name != "Claude" {
 		t.Fatalf("items=%#v", items)
 	}
 }

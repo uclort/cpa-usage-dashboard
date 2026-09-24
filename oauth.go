@@ -151,15 +151,25 @@ type antigravityWindow struct {
 }
 
 func antigravityPools(payload map[string]map[string]any) []usageItem {
-	windows := map[string]*antigravityWindow{"5h": {name: "5h"}, "weekly": {name: "周额度"}}
-	pools := map[string]bool{}
+	type candidate struct {
+		remaining float64
+		resetAt   *time.Time
+	}
+	type pool struct {
+		label      string
+		candidates []candidate
+	}
+	pools := map[string]*pool{
+		"claude": {label: "Claude"},
+		"gemini": {label: "Gemini"},
+	}
 	for model, entry := range payload {
 		lower := strings.ToLower(model)
-		pool := ""
-		if strings.HasPrefix(lower, "claude") {
-			pool = "claude"
-		} else if strings.HasPrefix(lower, "gemini") {
-			pool = "gemini"
+		var key string
+		if strings.HasPrefix(lower, "claude") || strings.Contains(lower, "anthropic") || strings.Contains(lower, "openai") || strings.Contains(lower, "gpt") {
+			key = "claude"
+		} else if strings.Contains(lower, "gemini") || strings.Contains(lower, "google_gemini") {
+			key = "gemini"
 		} else {
 			continue
 		}
@@ -170,34 +180,40 @@ func antigravityPools(payload map[string]map[string]any) []usageItem {
 		if quota == nil {
 			continue
 		}
-		pools[pool] = true
-		remaining := math.Max(0, math.Min(100, oauthNumber(firstValueAny(quota["remainingFraction"], quota["remaining_fraction"]))*100))
-		resetAt := oauthParseTime(firstNonEmpty(oauthText(quota["resetTime"]), oauthText(quota["reset_time"])))
-		key := "5h"
-		if resetAt != nil && time.Until(*resetAt) > 24*time.Hour {
-			key = "weekly"
-		}
-		window := windows[key]
-		item := usageItem{Name: strings.ToUpper(pool[:1]) + pool[1:] + " " + window.name, Unit: "%", Used: 100 - remaining, Remaining: remaining, UsedPercent: 100 - remaining, ResetAt: resetAt}
-		if !window.has || remaining < window.item.Remaining {
-			window.item = item
-			window.has = true
-		}
-	}
-	// windows is shared by pool, so collect once. Upstream response provides
-	// only one quota bucket per model; per-pool separation is reflected in item names.
-	var out []usageItem
-	for _, pool := range []string{"claude", "gemini"} {
-		if !pools[pool] {
+		remaining := oauthNumber(firstValueAny(quota["remainingFraction"], quota["remaining_fraction"]))
+		if math.IsNaN(remaining) {
 			continue
 		}
-		for _, key := range []string{"5h", "weekly"} {
-			if windows[key].has && strings.HasPrefix(strings.ToLower(windows[key].item.Name), pool) {
-				out = append(out, windows[key].item)
+		remaining = math.Max(0, math.Min(1, remaining))
+		resetAt := oauthParseTime(firstNonEmpty(oauthText(quota["resetTime"]), oauthText(quota["reset_time"])))
+		pools[key].candidates = append(pools[key].candidates, candidate{remaining: remaining, resetAt: resetAt})
+	}
+	var out []usageItem
+	for _, key := range []string{"claude", "gemini"} {
+		pool := pools[key]
+		if len(pool.candidates) == 0 {
+			continue
+		}
+		minRemaining := pool.candidates[0].remaining
+		for _, item := range pool.candidates {
+			minRemaining = math.Min(minRemaining, item.remaining)
+		}
+		var resetAt *time.Time
+		for _, item := range pool.candidates {
+			if item.remaining == minRemaining && item.resetAt != nil && (resetAt == nil || item.resetAt.After(*resetAt)) {
+				resetAt = item.resetAt
 			}
 		}
+		remaining := minRemaining * 100
+		out = append(out, usageItem{
+			Name:        pool.label,
+			Unit:        "%",
+			Used:        100 - remaining,
+			Remaining:   remaining,
+			UsedPercent: 100 - remaining,
+			ResetAt:     resetAt,
+		})
 	}
-	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out
 }
 
