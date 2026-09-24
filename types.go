@@ -9,7 +9,7 @@ import (
 
 const (
 	pluginID      = "cpa-usage-dashboard"
-	pluginVersion = "0.6.1"
+	pluginVersion = "0.6.2"
 
 	panelResourcePath = "/panel"
 	overviewRoute     = "/plugins/cpa-usage-dashboard/v1/overview"
@@ -90,6 +90,7 @@ type managementResponse struct {
 
 type usageSource struct {
 	ID           string            `json:"id" yaml:"id"`
+	Provider     string            `json:"provider,omitempty" yaml:"provider,omitempty"`
 	Name         string            `json:"name" yaml:"name"`
 	Enabled      bool              `json:"enabled" yaml:"enabled"`
 	Method       string            `json:"method" yaml:"method"`
@@ -125,6 +126,7 @@ func (s usageSource) identity() string {
 
 type overviewSource struct {
 	ID        string          `json:"id"`
+	Provider  string          `json:"provider,omitempty"`
 	Name      string          `json:"name"`
 	Status    string          `json:"status"`
 	Items     []usageItem     `json:"items,omitempty"`

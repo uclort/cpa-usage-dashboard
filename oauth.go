@@ -13,11 +13,14 @@ import (
 )
 
 const (
-	codexQuotaURL         = "https://chatgpt.com/backend-api/wham/usage"
-	geminiQuotaURL        = "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota"
-	antigravityQuotaURL   = "https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels"
-	antigravityDailyURL   = "https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels"
-	antigravitySandboxURL = "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal:fetchAvailableModels"
+	codexQuotaURL                = "https://chatgpt.com/backend-api/wham/usage"
+	geminiQuotaURL               = "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota"
+	antigravityQuotaURL          = "https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels"
+	antigravityDailyURL          = "https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels"
+	antigravitySandboxURL        = "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal:fetchAvailableModels"
+	antigravitySummaryDailyURL   = "https://daily-cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary"
+	antigravitySummarySandboxURL = "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal:retrieveUserQuotaSummary"
+	antigravitySummaryURL        = "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuotaSummary"
 )
 
 func oauthSupported(provider string) bool {
@@ -34,7 +37,7 @@ func normalizedOAuthProvider(entry hostAuthFileEntry) string {
 
 func fetchOAuthUsage(ctx context.Context, host hostClient, cfg pluginConfig, entry hostAuthFileEntry) overviewSource {
 	provider := normalizedOAuthProvider(entry)
-	out := overviewSource{ID: entry.AuthIndex, Name: firstNonEmpty(entry.Email, entry.Name, provider), Status: "error", Items: []usageItem{}}
+	out := overviewSource{ID: entry.AuthIndex, Provider: provider, Name: firstNonEmpty(entry.Email, entry.Name, provider), Status: "error", Items: []usageItem{}}
 	raw, err := host.getAuth(ctx, entry.AuthIndex)
 	if err != nil {
 		out.Error = &usageItemError{Code: "auth_read_failed", Message: err.Error()}
@@ -113,20 +116,39 @@ func fetchOAuthUsage(ctx context.Context, host hostClient, cfg pluginConfig, ent
 			return out
 		}
 		body, _ := json.Marshal(map[string]any{"project": projectID})
-		for _, endpoint := range []string{antigravityQuotaURL, antigravityDailyURL, antigravitySandboxURL} {
-			resp, err := doRequest(ctx, host, cfg, hostHTTPRequest{Method: http.MethodPost, URL: endpoint, Body: body, Headers: map[string][]string{"Authorization": {"Bearer " + token}, "Content-Type": {"application/json"}, "Accept": {"application/json"}, "User-Agent": {"antigravity/1.21.9 linux/amd64"}}})
+		headers := map[string][]string{"Authorization": {"Bearer " + token}, "Content-Type": {"application/json"}, "Accept": {"application/json"}, "User-Agent": {"antigravity/cli/1.0.13 (aidev_client; os_type=darwin; arch=arm64)"}}
+		for _, endpoint := range []string{antigravitySummaryDailyURL, antigravitySummarySandboxURL, antigravitySummaryURL} {
+			resp, err := doRequest(ctx, host, cfg, hostHTTPRequest{Method: http.MethodPost, URL: endpoint, Body: body, Headers: headers})
 			if err != nil {
 				continue
 			}
 			var payload struct {
-				Models map[string]map[string]any `json:"models"`
+				Groups []antigravityGroup `json:"groups"`
 			}
 			if json.Unmarshal(resp.Body, &payload) != nil {
 				continue
 			}
-			out.Items = antigravityPools(payload.Models)
-			if len(out.Items) > 0 {
+			if items := antigravitySummaryItems(payload.Groups); len(items) > 0 {
+				out.Items = items
 				break
+			}
+		}
+		if len(out.Items) == 0 {
+			for _, endpoint := range []string{antigravityQuotaURL, antigravityDailyURL, antigravitySandboxURL} {
+				resp, err := doRequest(ctx, host, cfg, hostHTTPRequest{Method: http.MethodPost, URL: endpoint, Body: body, Headers: headers})
+				if err != nil {
+					continue
+				}
+				var payload struct {
+					Models map[string]map[string]any `json:"models"`
+				}
+				if json.Unmarshal(resp.Body, &payload) != nil {
+					continue
+				}
+				out.Items = antigravityPools(payload.Models)
+				if len(out.Items) > 0 {
+					break
+				}
 			}
 		}
 	default:
@@ -148,6 +170,49 @@ type antigravityWindow struct {
 	name string
 	item usageItem
 	has  bool
+}
+
+type antigravityBucket struct {
+	BucketID          string  `json:"bucketId"`
+	BucketIDAlt       string  `json:"bucket_id"`
+	DisplayName       string  `json:"displayName"`
+	DisplayNameAlt    string  `json:"display_name"`
+	Window            string  `json:"window"`
+	ResetTime         string  `json:"resetTime"`
+	ResetTimeAlt      string  `json:"reset_time"`
+	RemainingFraction float64 `json:"remainingFraction"`
+}
+
+type antigravityGroup struct {
+	DisplayName    string              `json:"displayName"`
+	DisplayNameAlt string              `json:"display_name"`
+	Buckets        []antigravityBucket `json:"buckets"`
+}
+
+func antigravitySummaryItems(groups []antigravityGroup) []usageItem {
+	var out []usageItem
+	for _, group := range groups {
+		name := firstNonEmpty(group.DisplayName, group.DisplayNameAlt)
+		pool := ""
+		lower := strings.ToLower(name)
+		if strings.Contains(lower, "gemini") {
+			pool = "Gemini"
+		} else if strings.Contains(lower, "claude") || strings.Contains(lower, "gpt") || strings.Contains(lower, "3p") {
+			pool = "Claude"
+		} else {
+			continue
+		}
+		for _, bucket := range group.Buckets {
+			windowName := "5h"
+			if strings.Contains(strings.ToLower(bucket.Window), "week") {
+				windowName = "周额度"
+			}
+			remaining := math.Max(0, math.Min(100, bucket.RemainingFraction*100))
+			resetAt := oauthParseTime(firstNonEmpty(bucket.ResetTime, bucket.ResetTimeAlt))
+			out = append(out, usageItem{Name: pool + " " + windowName, Unit: "%", Used: 100 - remaining, Remaining: remaining, UsedPercent: 100 - remaining, ResetAt: resetAt})
+		}
+	}
+	return out
 }
 
 func antigravityPools(payload map[string]map[string]any) []usageItem {
