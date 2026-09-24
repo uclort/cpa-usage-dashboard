@@ -85,14 +85,7 @@ func fetchOAuthUsage(ctx context.Context, host hostClient, cfg pluginConfig, ent
 			return out
 		}
 		body, _ := json.Marshal(map[string]any{"project": projectID})
-		resp, err := doRequest(ctx, host, cfg, hostHTTPRequest{
-			Method: http.MethodPost, URL: geminiQuotaURL, Body: body,
-			Headers: map[string][]string{
-				"Authorization": {"Bearer " + token},
-				"Content-Type":  {"application/json"},
-				"Accept":        {"application/json"},
-			},
-		})
+		resp, err := doRequest(ctx, host, cfg, hostHTTPRequest{Method: http.MethodPost, URL: geminiQuotaURL, Body: body, Headers: googleOAuthHeaders(token, "IDE_UNSPECIFIED")})
 		if err != nil {
 			out.Error = &usageItemError{Code: "request_failed", Message: err.Error()}
 			return out
@@ -121,7 +114,7 @@ func fetchOAuthUsage(ctx context.Context, host hostClient, cfg pluginConfig, ent
 		}
 		body, _ := json.Marshal(map[string]any{"project": projectID})
 		for _, endpoint := range []string{antigravityQuotaURL, antigravityDailyURL, antigravitySandboxURL} {
-			resp, err := doRequest(ctx, host, cfg, hostHTTPRequest{Method: http.MethodPost, URL: endpoint, Body: body, Headers: map[string][]string{"Authorization": {"Bearer " + token}, "Content-Type": {"application/json"}, "Accept": {"application/json"}}})
+			resp, err := doRequest(ctx, host, cfg, hostHTTPRequest{Method: http.MethodPost, URL: endpoint, Body: body, Headers: googleOAuthHeaders(token, "ANTIGRAVITY")})
 			if err != nil {
 				continue
 			}
@@ -273,4 +266,16 @@ func hostCallbackID(ctx context.Context) string {
 		return value
 	}
 	return ""
+}
+
+func googleOAuthHeaders(token, ideType string) map[string][]string {
+	metadata, _ := json.Marshal(map[string]string{"ideType": ideType, "platform": "PLATFORM_UNSPECIFIED", "pluginType": "GEMINI"})
+	return map[string][]string{
+		"Authorization":     {"Bearer " + token},
+		"Content-Type":      {"application/json"},
+		"Accept":            {"application/json"},
+		"User-Agent":        {"google-api-nodejs-client/9.15.1"},
+		"X-Goog-Api-Client": {"google-cloud-sdk vscode_cloudshelleditor/0.1"},
+		"Client-Metadata":   {string(metadata)},
+	}
 }
