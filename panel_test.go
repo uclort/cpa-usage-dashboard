@@ -23,6 +23,7 @@ func TestPanelScriptAndCPAMPTheme(t *testing.T) {
 		`配置说明与使用方法`,
 		`source-grid`,
 		`account-card`,
+		`async function loadDashboard(force)`,
 		`detail-title`,
 		`auto-refresh`,
 	} {
