@@ -15,6 +15,7 @@ func pluginRegistration() registration {
 			ConfigFields: []configField{
 				{Name: "cache-ttl", Type: "string", Description: "看板缓存时间，默认 5m，支持 1m 到 24h。"},
 				{Name: "request-timeout", Type: "string", Description: "单个用量源请求超时，默认 15s。"},
+				{Name: "auto-refresh", Type: "string", Description: "看板自动刷新间隔，默认 5m，0 表示关闭。"},
 				{Name: "oauth-auth-indexes", Type: "array", Description: "加入看板的 Codex、Gemini、Antigravity OAuth 凭证索引。"},
 			},
 		},

@@ -16,6 +16,7 @@ type lifecycleRequest struct {
 
 type pluginConfig struct {
 	CacheTTL         time.Duration
+	AutoRefresh      time.Duration
 	RequestTimeout   time.Duration
 	Sources          []usageSource
 	OAuthAuthIndexes []string
@@ -23,13 +24,14 @@ type pluginConfig struct {
 
 type rawConfig struct {
 	CacheTTL         string        `yaml:"cache-ttl"`
+	AutoRefresh      string        `yaml:"auto-refresh"`
 	RequestTimeout   string        `yaml:"request-timeout"`
 	Sources          []usageSource `yaml:"sources"`
 	OAuthAuthIndexes []string      `yaml:"oauth-auth-indexes"`
 }
 
 func defaultConfig() pluginConfig {
-	return pluginConfig{CacheTTL: 5 * time.Minute, RequestTimeout: 15 * time.Second}
+	return pluginConfig{CacheTTL: 5 * time.Minute, AutoRefresh: 5 * time.Minute, RequestTimeout: 15 * time.Second}
 }
 
 func decodeLifecycleConfig(raw []byte) (pluginConfig, error) {
@@ -55,6 +57,13 @@ func decodeLifecycleConfig(raw []byte) (pluginConfig, error) {
 			return cfg, fmt.Errorf("cache-ttl 必须在 1m 到 24h 之间")
 		}
 		cfg.CacheTTL = value
+	}
+	if parsed.AutoRefresh != "" {
+		value, err := time.ParseDuration(parsed.AutoRefresh)
+		if err != nil || value < 0 {
+			return cfg, fmt.Errorf("auto-refresh 必须是 0 或有效时长")
+		}
+		cfg.AutoRefresh = value
 	}
 	if parsed.RequestTimeout != "" {
 		value, err := time.ParseDuration(parsed.RequestTimeout)

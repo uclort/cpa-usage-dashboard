@@ -13,13 +13,18 @@ func TestPanelScriptAndCPAMPTheme(t *testing.T) {
 		`--dash-primary:var(--primary-color,#409eff)`,
 		`.loading{display:grid;place-items:center;min-height:420px}`,
 		`toggle-custom-token`,
-		`用于访问用量查询接口的独立 Token`,
+		`手动输入独立查询 Token`,
 		`用量源管理`,
 		`OAuth 凭证`,
 		`enc::v2::`,
 		`oauth-auth-indexes`,
-		`自定义查询 Token`,
-		`绑定已有凭证`,
+		`自定义 Token`,
+		`使用凭证 Token`,
+		`配置说明与使用方法`,
+		`source-grid`,
+		`account-card`,
+		`detail-title`,
+		`auto-refresh`,
 	} {
 		if !strings.Contains(panelDocument, want) {
 			t.Fatalf("panel missing %q", want)
