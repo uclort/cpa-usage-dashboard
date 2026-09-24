@@ -11,10 +11,10 @@ func TestPanelScriptAndCPAMPTheme(t *testing.T) {
 	for _, want := range []string{
 		`path.replace(/^\/+/,"")`,
 		`--dash-primary:var(--primary-color,#409eff)`,
-		`.loading{display:grid;place-items:center;min-height:420px}`,
+		`.dashboard-loading{display:grid;place-items:center;min-height:420px}`,
 		`toggle-custom-token`,
 		`手动输入独立查询 Token`,
-		`用量源管理`,
+		`AI 提供商`,
 		`OAuth 凭证`,
 		`enc::v2::`,
 		`oauth-auth-indexes`,
@@ -28,10 +28,9 @@ func TestPanelScriptAndCPAMPTheme(t *testing.T) {
 		`AI 提供商`,
 		`formatRelativeTime`,
 		`bindDragSort`,
-		`detail-quota`,
 		`account-card`,
 		`async function loadDashboard(force)`,
-		`detail-title`,
+		`.icon-button.refreshing`,
 		`auto-refresh`,
 	} {
 		if !strings.Contains(panelDocument, want) {
