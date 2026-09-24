@@ -114,7 +114,7 @@ func fetchOAuthUsage(ctx context.Context, host hostClient, cfg pluginConfig, ent
 		}
 		body, _ := json.Marshal(map[string]any{"project": projectID})
 		for _, endpoint := range []string{antigravityQuotaURL, antigravityDailyURL, antigravitySandboxURL} {
-			resp, err := doRequest(ctx, host, cfg, hostHTTPRequest{Method: http.MethodPost, URL: endpoint, Body: body, Headers: googleOAuthHeaders(token, "ANTIGRAVITY")})
+			resp, err := doRequest(ctx, host, cfg, hostHTTPRequest{Method: http.MethodPost, URL: endpoint, Body: body, Headers: map[string][]string{"Authorization": {"Bearer " + token}, "Content-Type": {"application/json"}, "Accept": {"application/json"}, "User-Agent": {"antigravity/1.21.9 linux/amd64"}}})
 			if err != nil {
 				continue
 			}

@@ -9,7 +9,7 @@ import (
 
 const (
 	pluginID      = "cpa-usage-dashboard"
-	pluginVersion = "0.3.3"
+	pluginVersion = "0.3.4"
 
 	panelResourcePath = "/panel"
 	overviewRoute     = "/plugins/cpa-usage-dashboard/v1/overview"
