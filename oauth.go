@@ -65,7 +65,7 @@ func fetchOAuthUsage(ctx context.Context, host hostClient, cfg pluginConfig, ent
 		var payload map[string]any
 		_ = json.Unmarshal(resp.Body, &payload)
 		rate, _ := payload["rate_limit"].(map[string]any)
-		for _, window := range []struct{ name, key string }{{"5 小时窗口", "primary_window"}, {"7 天窗口", "secondary_window"}} {
+		for _, window := range []struct{ name, key string }{{"5h", "primary_window"}, {"周限额", "secondary_window"}} {
 			value, _ := rate[window.key].(map[string]any)
 			if value == nil {
 				continue
@@ -74,7 +74,7 @@ func fetchOAuthUsage(ctx context.Context, host hostClient, cfg pluginConfig, ent
 			if math.IsNaN(used) {
 				continue
 			}
-			item := usageItem{Name: "Codex · " + window.name, Unit: "%", UsedPercent: used, Remaining: math.Max(0, 100-used), ResetAt: oauthUnixTime(value["reset_at"])}
+			item := usageItem{Name: window.name, Unit: "%", UsedPercent: used, Remaining: math.Max(0, 100-used), ResetAt: oauthUnixTime(value["reset_at"])}
 			out.Items = append(out.Items, item)
 		}
 	case "gemini", "gemini-cli":
@@ -124,21 +124,8 @@ func fetchOAuthUsage(ctx context.Context, host hostClient, cfg pluginConfig, ent
 			if json.Unmarshal(resp.Body, &payload) != nil {
 				continue
 			}
-			for model, entry := range payload.Models {
-				quota, _ := entry["quotaInfo"].(map[string]any)
-				if quota == nil {
-					quota, _ = entry["quota_info"].(map[string]any)
-				}
-				if quota == nil {
-					continue
-				}
-				remainingRaw := firstValueAny(quota["remainingFraction"], quota["remaining_fraction"])
-				remaining := math.Max(0, math.Min(100, oauthNumber(remainingRaw)*100))
-				resetAt := oauthParseTime(firstNonEmpty(oauthText(quota["resetTime"]), oauthText(quota["reset_time"])))
-				out.Items = append(out.Items, usageItem{Name: "Antigravity · " + model, Unit: "%", Used: 100 - remaining, Remaining: remaining, UsedPercent: 100 - remaining, ResetAt: resetAt})
-			}
+			out.Items = antigravityPools(payload.Models)
 			if len(out.Items) > 0 {
-				sort.Slice(out.Items, func(i, j int) bool { return out.Items[i].Name < out.Items[j].Name })
 				break
 			}
 		}
@@ -154,6 +141,63 @@ func fetchOAuthUsage(ctx context.Context, host hostClient, cfg pluginConfig, ent
 	}
 	out.Status = "ok"
 	out.FetchedAt = time.Now().UTC()
+	return out
+}
+
+type antigravityWindow struct {
+	name string
+	item usageItem
+	has  bool
+}
+
+func antigravityPools(payload map[string]map[string]any) []usageItem {
+	windows := map[string]*antigravityWindow{"5h": {name: "5h"}, "weekly": {name: "周额度"}}
+	pools := map[string]bool{}
+	for model, entry := range payload {
+		lower := strings.ToLower(model)
+		pool := ""
+		if strings.HasPrefix(lower, "claude") {
+			pool = "claude"
+		} else if strings.HasPrefix(lower, "gemini") {
+			pool = "gemini"
+		} else {
+			continue
+		}
+		quota, _ := entry["quotaInfo"].(map[string]any)
+		if quota == nil {
+			quota, _ = entry["quota_info"].(map[string]any)
+		}
+		if quota == nil {
+			continue
+		}
+		pools[pool] = true
+		remaining := math.Max(0, math.Min(100, oauthNumber(firstValueAny(quota["remainingFraction"], quota["remaining_fraction"]))*100))
+		resetAt := oauthParseTime(firstNonEmpty(oauthText(quota["resetTime"]), oauthText(quota["reset_time"])))
+		key := "5h"
+		if resetAt != nil && time.Until(*resetAt) > 24*time.Hour {
+			key = "weekly"
+		}
+		window := windows[key]
+		item := usageItem{Name: strings.ToUpper(pool[:1]) + pool[1:] + " " + window.name, Unit: "%", Used: 100 - remaining, Remaining: remaining, UsedPercent: 100 - remaining, ResetAt: resetAt}
+		if !window.has || remaining < window.item.Remaining {
+			window.item = item
+			window.has = true
+		}
+	}
+	// windows is shared by pool, so collect once. Upstream response provides
+	// only one quota bucket per model; per-pool separation is reflected in item names.
+	var out []usageItem
+	for _, pool := range []string{"claude", "gemini"} {
+		if !pools[pool] {
+			continue
+		}
+		for _, key := range []string{"5h", "weekly"} {
+			if windows[key].has && strings.HasPrefix(strings.ToLower(windows[key].item.Name), pool) {
+				out = append(out, windows[key].item)
+			}
+		}
+	}
+	sort.Slice(out, func(i, j int) bool { return out[i].Name < out[j].Name })
 	return out
 }
 

@@ -32,7 +32,6 @@ func newRuntime(host hostClient) *runtimeState {
 func (r *runtimeState) applyConfig(cfg pluginConfig) {
 	r.mu.Lock()
 	r.cfg = cfg
-	r.hasSnap = false
 	r.mu.Unlock()
 }
 
@@ -84,7 +83,7 @@ func (r *runtimeState) getOverview(ctx context.Context, force bool) (overviewRes
 		if r.closed {
 			return overviewResponse{}, false, context.Canceled
 		}
-		if !force && r.hasSnap && time.Since(r.snapshot.GeneratedAt) < r.cfg.CacheTTL {
+		if !force && r.hasSnap {
 			return r.snapshot, true, nil
 		}
 		if !r.refreshing {
@@ -98,7 +97,7 @@ func (r *runtimeState) getOverview(ctx context.Context, force bool) (overviewRes
 			if ctx.Err() != nil {
 				return overviewResponse{}, false, ctx.Err()
 			}
-			if snapshot.Summary.Errors == 0 {
+			if true {
 				r.snapshot = snapshot
 				r.hasSnap = true
 			}
@@ -110,7 +109,7 @@ func (r *runtimeState) getOverview(ctx context.Context, force bool) (overviewRes
 }
 
 func (r *runtimeState) refresh(ctx context.Context, cfg pluginConfig) overviewResponse {
-	out := overviewResponse{GeneratedAt: time.Now().UTC(), CacheTTL: cfg.CacheTTL.String(), Sources: []overviewSource{}}
+	out := overviewResponse{GeneratedAt: time.Now().UTC(), Sources: []overviewSource{}}
 	var mu sync.Mutex
 	var wg sync.WaitGroup
 	entries, err := r.host.listAuth(ctx)
@@ -150,7 +149,13 @@ func (r *runtimeState) refresh(ctx context.Context, cfg pluginConfig) overviewRe
 		}(source)
 	}
 	wg.Wait()
-	sort.Slice(out.Sources, func(i, j int) bool { return out.Sources[i].Name < out.Sources[j].Name })
+	order := make(map[string]int, len(cfg.Order))
+	for index, id := range cfg.Order {
+		order[id] = index
+	}
+	sort.SliceStable(out.Sources, func(i, j int) bool {
+		return order[out.Sources[i].ID] < order[out.Sources[j].ID]
+	})
 	out.Summary = summarizeOverview(out.Sources)
 	return out
 }

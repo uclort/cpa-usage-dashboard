@@ -22,6 +22,9 @@ func TestPanelScriptAndCPAMPTheme(t *testing.T) {
 		`使用凭证 Token`,
 		`配置说明与使用方法`,
 		`source-grid`,
+		`provider-icon`,
+		`bindDragSort`,
+		`detail-quota`,
 		`account-card`,
 		`async function loadDashboard(force)`,
 		`detail-title`,
@@ -38,7 +41,7 @@ func TestPanelScriptAndCPAMPTheme(t *testing.T) {
 
 func TestRuntimeDoesNotDeadlockAfterRefresh(t *testing.T) {
 	r := newRuntime(&fakeHost{})
-	r.applyConfig(pluginConfig{CacheTTL: time.Minute, RequestTimeout: time.Second})
+	r.applyConfig(pluginConfig{RequestTimeout: time.Second})
 	for i := 0; i < 3; i++ {
 		if _, _, err := r.getOverview(context.Background(), true); err != nil {
 			t.Fatalf("getOverview %d: %v", i, err)

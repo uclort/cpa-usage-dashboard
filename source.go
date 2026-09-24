@@ -12,7 +12,7 @@ import (
 )
 
 func fetchSource(ctx context.Context, host hostClient, cfg pluginConfig, source usageSource) overviewSource {
-	out := overviewSource{ID: source.ID, Name: firstNonEmpty(source.Name, source.ID), Status: "error", Items: []usageItem{}}
+	out := overviewSource{ID: source.identity(), Name: firstNonEmpty(source.Name, source.ID), Status: "error", Items: []usageItem{}}
 	if source.ID == "" || source.URL == "" || source.FieldTotal == "" || source.FieldUsed == "" {
 		out.Error = &usageItemError{Code: "invalid_source", Message: "id、url、field_total、field_used 都是必填"}
 		return out

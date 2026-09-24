@@ -9,7 +9,7 @@ import (
 
 const (
 	pluginID      = "cpa-usage-dashboard"
-	pluginVersion = "0.5.1"
+	pluginVersion = "0.6.0"
 
 	panelResourcePath = "/panel"
 	overviewRoute     = "/plugins/cpa-usage-dashboard/v1/overview"
@@ -113,6 +113,16 @@ type usageSource struct {
 	AuthPrefix   string            `json:"auth_prefix,omitempty" yaml:"auth_prefix,omitempty"`
 }
 
+func (s usageSource) identity() string {
+	if s.ID != "" {
+		return s.ID
+	}
+	if s.Name != "" {
+		return "source:" + s.Name
+	}
+	return "source:" + s.URL
+}
+
 type overviewSource struct {
 	ID        string          `json:"id"`
 	Name      string          `json:"name"`
@@ -141,7 +151,6 @@ type usageItemError struct {
 type overviewResponse struct {
 	GeneratedAt time.Time        `json:"generated_at"`
 	Cached      bool             `json:"cached"`
-	CacheTTL    string           `json:"cache_ttl"`
 	Summary     overviewSummary  `json:"summary"`
 	Sources     []overviewSource `json:"sources"`
 }

@@ -23,3 +23,14 @@ func TestFetchOAuthUsageGemini(t *testing.T) {
 		t.Fatalf("out=%#v", out)
 	}
 }
+
+func TestAntigravityPools(t *testing.T) {
+	payload := map[string]map[string]any{
+		"claude-sonnet": {"quotaInfo": map[string]any{"remainingFraction": .8, "resetTime": "2026-01-01T01:00:00Z"}},
+		"chat-other":    {"quotaInfo": map[string]any{"remainingFraction": .1, "resetTime": "2026-01-01T00:00:00Z"}},
+	}
+	items := antigravityPools(payload)
+	if len(items) != 1 || items[0].Name != "Claude 5h" {
+		t.Fatalf("items=%#v", items)
+	}
+}
