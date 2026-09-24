@@ -1,0 +1,25 @@
+package main
+
+import (
+	"context"
+	"encoding/json"
+	"testing"
+)
+
+func TestFetchOAuthUsageCodex(t *testing.T) {
+	body, _ := json.Marshal(map[string]any{"rate_limit": map[string]any{"primary_window": map[string]any{"used_percent": 30.0, "reset_at": 1800000000}}})
+	host := &fakeHost{response: hostHTTPResponse{StatusCode: 200, Body: body}, auth: json.RawMessage(`{"access_token":"token","account_id":"account"}`)}
+	out := fetchOAuthUsage(context.Background(), host, defaultConfig(), hostAuthFileEntry{AuthIndex: "auth", Provider: "codex", Name: "Codex", Email: "user@example.com"})
+	if out.Status != "ok" || len(out.Items) != 1 || out.Items[0].UsedPercent != 30 {
+		t.Fatalf("out=%#v", out)
+	}
+}
+
+func TestFetchOAuthUsageGemini(t *testing.T) {
+	body, _ := json.Marshal(map[string]any{"buckets": []any{map[string]any{"modelId": "model", "remainingFraction": 0.75, "resetTime": "2026-01-01T00:00:00Z"}}})
+	host := &fakeHost{response: hostHTTPResponse{StatusCode: 200, Body: body}, auth: json.RawMessage(`{"access_token":"token","project_id":"project"}`)}
+	out := fetchOAuthUsage(context.Background(), host, defaultConfig(), hostAuthFileEntry{AuthIndex: "auth", Provider: "gemini", Name: "Gemini", ProjectID: "project"})
+	if out.Status != "ok" || len(out.Items) != 1 || out.Items[0].Remaining != 75 {
+		t.Fatalf("out=%#v", out)
+	}
+}

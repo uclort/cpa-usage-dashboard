@@ -4,9 +4,9 @@
     {
       "id": "cpa-usage-dashboard",
       "name": "用量看板",
-      "description": "通用 HTTP 用量源配置、凭证绑定、JSON 字段解析和中文用量看板。",
+      "description": "通用 HTTP 用量源、Codex/Gemini OAuth 凭证用量和 CPAMP 风格中文看板。",
       "author": "uclort",
-      "version": "0.2.3",
+      "version": "0.3.0",
       "repository": "https://github.com/uclort/cpa-usage-dashboard",
       "homepage": "https://github.com/uclort/cpa-usage-dashboard",
       "license": "MIT",

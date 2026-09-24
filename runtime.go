@@ -110,6 +110,29 @@ func (r *runtimeState) refresh(ctx context.Context, cfg pluginConfig) overviewRe
 	out := overviewResponse{GeneratedAt: time.Now().UTC(), CacheTTL: cfg.CacheTTL.String(), Sources: []overviewSource{}}
 	var mu sync.Mutex
 	var wg sync.WaitGroup
+	entries, err := r.host.listAuth(ctx)
+	if err == nil {
+		selected := make(map[string]struct{}, len(cfg.OAuthAuthIndexes))
+		for _, authIndex := range cfg.OAuthAuthIndexes {
+			selected[authIndex] = struct{}{}
+		}
+		for _, entry := range entries {
+			if _, exists := selected[entry.AuthIndex]; !exists {
+				continue
+			}
+			if !oauthSupported(normalizedOAuthProvider(entry)) {
+				continue
+			}
+			wg.Add(1)
+			go func(entry hostAuthFileEntry) {
+				defer wg.Done()
+				item := fetchOAuthUsage(ctx, r.host, cfg, entry)
+				mu.Lock()
+				out.Sources = append(out.Sources, item)
+				mu.Unlock()
+			}(entry)
+		}
+	}
 	for _, source := range cfg.Sources {
 		if !source.Enabled {
 			continue

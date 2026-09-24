@@ -10,6 +10,9 @@ func TestPanelScriptAndCPAMPTheme(t *testing.T) {
 		`path.replace(/^\/+/,"")`,
 		`--dash-primary:var(--primary-color,#409eff)`,
 		`用量源管理`,
+		`OAuth 凭证`,
+		`enc::v2::`,
+		`oauth-auth-indexes`,
 		`自定义查询 Token`,
 		`绑定已有凭证`,
 	} {

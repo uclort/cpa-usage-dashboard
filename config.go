@@ -15,15 +15,17 @@ type lifecycleRequest struct {
 }
 
 type pluginConfig struct {
-	CacheTTL       time.Duration
-	RequestTimeout time.Duration
-	Sources        []usageSource
+	CacheTTL         time.Duration
+	RequestTimeout   time.Duration
+	Sources          []usageSource
+	OAuthAuthIndexes []string
 }
 
 type rawConfig struct {
-	CacheTTL       string        `yaml:"cache-ttl"`
-	RequestTimeout string        `yaml:"request-timeout"`
-	Sources        []usageSource `yaml:"sources"`
+	CacheTTL         string        `yaml:"cache-ttl"`
+	RequestTimeout   string        `yaml:"request-timeout"`
+	Sources          []usageSource `yaml:"sources"`
+	OAuthAuthIndexes []string      `yaml:"oauth-auth-indexes"`
 }
 
 func defaultConfig() pluginConfig {
@@ -62,6 +64,7 @@ func decodeLifecycleConfig(raw []byte) (pluginConfig, error) {
 		cfg.RequestTimeout = value
 	}
 	cfg.Sources = parsed.Sources
+	cfg.OAuthAuthIndexes = parsed.OAuthAuthIndexes
 	return cfg, nil
 }
 

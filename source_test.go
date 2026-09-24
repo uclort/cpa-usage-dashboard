@@ -86,10 +86,11 @@ func TestHostHTTPWireShape(t *testing.T) {
 type fakeHost struct {
 	response hostHTTPResponse
 	request  hostHTTPRequest
+	auth     json.RawMessage
 }
 
 func (f *fakeHost) listAuth(context.Context) ([]hostAuthFileEntry, error)    { return nil, nil }
-func (f *fakeHost) getAuth(context.Context, string) (json.RawMessage, error) { return nil, nil }
+func (f *fakeHost) getAuth(context.Context, string) (json.RawMessage, error) { return f.auth, nil }
 func (f *fakeHost) getAuthRuntime(context.Context, string) (hostAuthFileEntry, error) {
 	return hostAuthFileEntry{}, nil
 }
