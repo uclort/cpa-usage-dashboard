@@ -15,7 +15,7 @@ CLIProxyAPI 原生通用用量看板插件。通过页面配置 HTTP 请求和 J
 
 ## OAuth 凭证
 
-在面板的「OAuth 凭证」页勾选已有的 Codex 或 Gemini OAuth 凭证，保存后会直接展示这些凭证的官方用量，不需要手写查询接口或解析规则。
+在面板的「OAuth 凭证」页勾选已有的 Codex、Gemini 或 Antigravity OAuth 凭证，保存后会直接展示这些凭证的官方用量，不需要手写查询接口或解析规则。
 
 ## 通用 HTTP 用量源示例
 

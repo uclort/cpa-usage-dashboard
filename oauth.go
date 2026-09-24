@@ -13,12 +13,15 @@ import (
 )
 
 const (
-	codexQuotaURL  = "https://chatgpt.com/backend-api/wham/usage"
-	geminiQuotaURL = "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota"
+	codexQuotaURL         = "https://chatgpt.com/backend-api/wham/usage"
+	geminiQuotaURL        = "https://cloudcode-pa.googleapis.com/v1internal:retrieveUserQuota"
+	antigravityQuotaURL   = "https://cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels"
+	antigravityDailyURL   = "https://daily-cloudcode-pa.googleapis.com/v1internal:fetchAvailableModels"
+	antigravitySandboxURL = "https://daily-cloudcode-pa.sandbox.googleapis.com/v1internal:fetchAvailableModels"
 )
 
 func oauthSupported(provider string) bool {
-	return provider == "codex" || provider == "gemini" || provider == "gemini-cli"
+	return provider == "codex" || provider == "gemini" || provider == "gemini-cli" || provider == "antigravity"
 }
 
 func normalizedOAuthProvider(entry hostAuthFileEntry) string {
@@ -109,8 +112,45 @@ func fetchOAuthUsage(ctx context.Context, host hostClient, cfg pluginConfig, ent
 			out.Items = append(out.Items, usageItem{Name: "Gemini · " + name, Unit: "%", Used: 100 - remaining, Remaining: remaining, UsedPercent: 100 - remaining, ResetAt: resetAt})
 		}
 		sort.Slice(out.Items, func(i, j int) bool { return out.Items[i].Name < out.Items[j].Name })
+	case "antigravity":
+		token := oauthLookupString(doc, "access_token")
+		projectID := firstNonEmpty(entry.ProjectID, oauthLookupString(doc, "project_id"))
+		if token == "" || projectID == "" {
+			out.Error = &usageItemError{Code: "credential_incomplete", Message: "Antigravity 凭证缺少 access_token 或 project_id"}
+			return out
+		}
+		body, _ := json.Marshal(map[string]any{"project": projectID})
+		for _, endpoint := range []string{antigravityQuotaURL, antigravityDailyURL, antigravitySandboxURL} {
+			resp, err := doRequest(ctx, host, cfg, hostHTTPRequest{Method: http.MethodPost, URL: endpoint, Body: body, Headers: map[string][]string{"Authorization": {"Bearer " + token}, "Content-Type": {"application/json"}, "Accept": {"application/json"}}})
+			if err != nil {
+				continue
+			}
+			var payload struct {
+				Models map[string]map[string]any `json:"models"`
+			}
+			if json.Unmarshal(resp.Body, &payload) != nil {
+				continue
+			}
+			for model, entry := range payload.Models {
+				quota, _ := entry["quotaInfo"].(map[string]any)
+				if quota == nil {
+					quota, _ = entry["quota_info"].(map[string]any)
+				}
+				if quota == nil {
+					continue
+				}
+				remainingRaw := firstValueAny(quota["remainingFraction"], quota["remaining_fraction"])
+				remaining := math.Max(0, math.Min(100, oauthNumber(remainingRaw)*100))
+				resetAt := oauthParseTime(firstNonEmpty(oauthText(quota["resetTime"]), oauthText(quota["reset_time"])))
+				out.Items = append(out.Items, usageItem{Name: "Antigravity · " + model, Unit: "%", Used: 100 - remaining, Remaining: remaining, UsedPercent: 100 - remaining, ResetAt: resetAt})
+			}
+			if len(out.Items) > 0 {
+				sort.Slice(out.Items, func(i, j int) bool { return out.Items[i].Name < out.Items[j].Name })
+				break
+			}
+		}
 	default:
-		out.Error = &usageItemError{Code: "unsupported_provider", Message: "仅支持 Codex 和 Gemini OAuth 凭证"}
+		out.Error = &usageItemError{Code: "unsupported_provider", Message: "仅支持 Codex、Gemini 和 Antigravity OAuth 凭证"}
 		return out
 	}
 	if len(out.Items) == 0 {
