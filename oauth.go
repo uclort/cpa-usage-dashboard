@@ -202,14 +202,16 @@ func antigravitySummaryItems(groups []antigravityGroup) []usageItem {
 		} else {
 			continue
 		}
-		for _, bucket := range group.Buckets {
-			windowName := "5h"
-			if strings.Contains(strings.ToLower(bucket.Window), "week") {
-				windowName = "周额度"
+		for _, windowName := range []string{"5h", "周额度"} {
+			for _, bucket := range group.Buckets {
+				isWeekly := strings.Contains(strings.ToLower(bucket.Window), "week")
+				if (windowName == "周额度") != isWeekly {
+					continue
+				}
+				remaining := math.Max(0, math.Min(100, bucket.RemainingFraction*100))
+				resetAt := oauthParseTime(firstNonEmpty(bucket.ResetTime, bucket.ResetTimeAlt))
+				out = append(out, usageItem{Name: pool + " " + windowName, Unit: "%", Used: 100 - remaining, Remaining: remaining, UsedPercent: 100 - remaining, ResetAt: resetAt})
 			}
-			remaining := math.Max(0, math.Min(100, bucket.RemainingFraction*100))
-			resetAt := oauthParseTime(firstNonEmpty(bucket.ResetTime, bucket.ResetTimeAlt))
-			out = append(out, usageItem{Name: pool + " " + windowName, Unit: "%", Used: 100 - remaining, Remaining: remaining, UsedPercent: 100 - remaining, ResetAt: resetAt})
 		}
 	}
 	return out

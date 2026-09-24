@@ -41,7 +41,7 @@ func TestAntigravitySummaryItems(t *testing.T) {
 		{DisplayName: "Claude and GPT models", Buckets: []antigravityBucket{{Window: "weekly", RemainingFraction: .7, ResetTime: "2026-01-07T00:00:00Z"}, {Window: "5h", RemainingFraction: 1, ResetTime: "2026-01-01T05:00:00Z"}}},
 	}
 	items := antigravitySummaryItems(groups)
-	if len(items) != 4 || items[0].Name != "Gemini 周额度" || items[1].Name != "Gemini 5h" || items[2].Name != "Claude 周额度" || items[3].Name != "Claude 5h" {
+	if len(items) != 4 || items[0].Name != "Gemini 5h" || items[1].Name != "Gemini 周额度" || items[2].Name != "Claude 5h" || items[3].Name != "Claude 周额度" {
 		t.Fatalf("items=%#v", items)
 	}
 }
