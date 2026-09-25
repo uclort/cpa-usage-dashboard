@@ -32,6 +32,10 @@ func TestPanelScriptAndCPAMPTheme(t *testing.T) {
 		`async function loadDashboard(force)`,
 		`.icon-button.refreshing`,
 		`auto-refresh`,
+		`data-time`,
+		`数据时间：`,
+		`refreshIfStale`,
+		`visibilitychange`,
 	} {
 		if !strings.Contains(panelDocument, want) {
 			t.Fatalf("panel missing %q", want)
