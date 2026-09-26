@@ -36,6 +36,7 @@ func TestPanelScriptAndCPAMPTheme(t *testing.T) {
 		`数据时间：`,
 		`refreshIfStale`,
 		`visibilitychange`,
+		`remainingPct=100-usedPct`,
 	} {
 		if !strings.Contains(panelDocument, want) {
 			t.Fatalf("panel missing %q", want)
